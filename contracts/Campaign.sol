@@ -1,25 +1,23 @@
 pragma solidity ^0.8.0;
 
-contract Test{
-
-}
-
 contract Campaign{
 
+    // fixed by manager - constants
+    address public immutable manager;
+    uint256 public immutable maximumTarget;
+    uint256 public immutable minimumTarget;
+    uint24  public immutable duration;
     string  public name;
-    address public manager;
-    uint256 public maximumTarget;
-    uint256 public minimumTarget;
-    uint24  public duration;
     bytes   public hash;
 
-    uint256 public startTime;
+    // Logic state variables
     uint8   public isActive;
     uint8   public isClosed;
-    uint256 public totalCollected;
-    uint256 public totalWithdrawn;
     uint8   public isMinimumReached;
     uint8   public isMaximumReached;
+    uint256 public startTime;
+    uint256 public totalCollected;
+    uint256 public totalWithdrawn;
 
     mapping( address => uint256 ) public contributors;
 
@@ -106,7 +104,7 @@ contract Campaign{
     function withdraw(uint256 _amount) public onlyManager {
         require(
             isMinimumReached == 1 || block.timestamp >= startTime + duration,
-            "Campaign: The campaign have been finalised"
+            "Campaign: The campaign have not been finalised"
         );
         require(
             totalCollected >= totalWithdrawn+_amount,

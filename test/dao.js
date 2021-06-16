@@ -1,15 +1,14 @@
-const DAO = artifacts.require('DAO');
-const Campaign = artifacts.require('Campaign');
-const { expect } = require('chai');
-const { BN, expectRevert, expectEvent, time, constants } = require('@openzeppelin/test-helpers');
-const { toWei } = web3.utils;
-
-const events = [
-    'NewOwnerAdded',
-    'NewProposalCreated',
-    'VoteCasted',
-    'CampaignDeployed'
-];
+const {
+    DAO,
+    Campaign,
+    expect,
+    BN,
+    expectRevert,
+    expectEvent,
+    constants,
+    toWei,
+    daoEvents: events
+} = require('./helpers/setup.js');
 
 contract('DAO', async (accounts) => {
     let [deployer, owner2, nonOwner, manager, owner3] = accounts;
