@@ -36,6 +36,7 @@ contract DAO{
     }
 
     function addNewOwner(address _newOwner) public onlyOwner {
+        require(isOwner[_newOwner] == 0, "DAO: already an owner");
         isOwner[_newOwner] = 1;
         totalOwners++;
         emit NewOwnerAdded(msg.sender, _newOwner);
