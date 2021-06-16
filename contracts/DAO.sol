@@ -1,5 +1,7 @@
 pragma solidity ^0.8.0;
 
+import './Campaign.sol';
+
 contract DAO{
 
     mapping(address => uint8) public isOwner;
@@ -74,9 +76,16 @@ contract DAO{
         campaignVotes[_proposalId]++;
         emit VoteCasted(msg.sender, _proposalId, campaignVotes[_proposalId]);
         if( campaignVotes[_proposalId] > (totalOwners/2) ){
-            // deploy Campaign
-            // Campaign memory campaign = new Campaign()
-            // emit CampaignDeployed(campaign, _proposalId, proposals[_proposalId].manager)
+            proposals[_proposalId].isDeployed = 1;
+            Campaign campaign = new Campaign(
+                proposals[_proposalId].proposalName,
+                proposals[_proposalId].manager,
+                proposals[_proposalId].duration,
+                proposals[_proposalId].maximumTarget,
+                proposals[_proposalId].minimumTarget,
+                proposals[_proposalId].hash
+            );
+            emit CampaignDeployed(address(campaign), _proposalId, proposals[_proposalId].manager);
         }
     }
 

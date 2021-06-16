@@ -1,4 +1,5 @@
 const DAO = artifacts.require('DAO');
+const Campaign = artifacts.require('Campaign');
 const { expect } = require('chai');
 const { BN, expectRevert, expectEvent, time, constants } = require('@openzeppelin/test-helpers');
 const { toWei } = web3.utils;
@@ -11,10 +12,11 @@ const events = [
 ];
 
 contract('DAO', async (accounts) => {
-    let [deployer, owner2, nonOwner, manager] = accounts;
+    let [deployer, owner2, nonOwner, manager, owner3] = accounts;
     let dao;
     let options;
     let trx;
+    let event;
     let zeroBn = new BN(0);
     context('# Deploy new DAO', async () => {
         before("!! Deploy dao for testing", async () => {
@@ -27,13 +29,13 @@ contract('DAO', async (accounts) => {
             expect((await dao.totalOwners()).toString()).to.equal('1');
         });
         it(`>> should emit event ${events[0]} with correct values`, async () => {
-            await expectEvent.inTransaction(
+            const event = await expectEvent.inTransaction(
                 dao.transactionHash,
                 dao,
                 events[0],
                 {
-                    inviter: constants.ZERO_ADDRESS,
-                    newOwner: deployer
+                    newOwner: deployer,
+                    inviter: constants.ZERO_ADDRESS
                 }
             );
         });
@@ -99,8 +101,9 @@ contract('DAO', async (accounts) => {
             expect((await dao.campaignManagers(deployer)).toString()).to.equal('0')
         });
         it(`>> should emit an event ${events[1]}`, async () => {
-            await expectEvent(
-                trx.receipt,
+            await expectEvent.inTransaction(
+                trx.tx,
+                dao,
                 events[1],
                 {
                     manager: manager,
@@ -110,6 +113,9 @@ contract('DAO', async (accounts) => {
         });
     });
     context('# voting', async () => {
+        before('!! Add new owners', async () => {
+            await dao.addNewOwner(owner3, {from: owner2});
+        });
         context('$ voter in not an owner', async () => {
             it('>> reverts', async () => {
                 await expectRevert(
@@ -120,13 +126,42 @@ contract('DAO', async (accounts) => {
         });
         context('$ voter is an owner', async () => {
             it('>> increases total vote count for proposal', async () => {
-                await dao.vote(0, {from: deployer});
+                trx = await dao.vote(0, {from: deployer});
                 expect((await dao.campaignVotes(0)).toString()).to.equal('1');
+            });
+            it(`>> should emit an event ${events[2]}`, async () => {
+                await expectEvent.inTransaction(
+                    trx.tx,
+                    dao,
+                    events[2]
+                );
             });
             it('>> cannot vote again on same proposal', async () => {
                 await expectRevert(
                     dao.vote(0, {from: deployer}),
                     "DAO: already casted vote for this proposal"
+                )
+            });
+            it('>> deploys camapign contract when votes is > 50%', async () => {
+                expect((await dao.proposals(0)).isDeployed.toString()).to.equal('0');
+                trx = await dao.vote(0, {from: owner3});
+                expect((await dao.proposals(0)).isDeployed.toString()).to.equal('1');
+            });
+            it(`>> should emit an event ${events[3]}`, async () => {
+                event = await expectEvent.inTransaction(
+                    trx.tx,
+                    dao,
+                    events[3]
+                );
+            });
+            it('>> should deploy campaign with correct values', async () => {
+                const campaign = await Campaign.at(event.args.campaign);
+                expect(await campaign.manager()).to.equal(manager);
+            });
+            it('>> cannot vote on already deployed proposal', async () => {
+                await expectRevert(
+                    dao.vote(0, {from: deployer}),
+                    "DAO: Proposal already executed"
                 )
             });
         });
