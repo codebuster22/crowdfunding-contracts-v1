@@ -1,6 +1,14 @@
 const DAO = artifacts.require('DAO');
 const { expect } = require('chai');
-const { BN, toWei } = web3.utils;
+const { BN, expectRevert, expectEvent, time, constants } = require('@openzeppelin/test-helpers');
+const { toWei } = web3.utils;
+
+const events = [
+    'NewOwnerAdded',
+    'NewProposalCreated',
+    'VoteCasted',
+    'CampaignDeployed'
+];
 
 contract('DAO', async (accounts) => {
     let [deployer, owner2] = accounts;
@@ -16,15 +24,36 @@ contract('DAO', async (accounts) => {
         it(">> totalOwners should increase by 1", async () => {
             expect((await dao.totalOwners()).toString()).to.equal('1');
         });
+        it(`>> should emit event ${events[0]} with correct values`, async () => {
+            await expectEvent.inTransaction(
+                dao.transactionHash,
+                dao,
+                events[0],
+                {
+                    inviter: constants.ZERO_ADDRESS,
+                    newOwner: deployer
+                }
+            );
+        });
     });
     context('# Add new Owner', () => {
-        it(">> Owner can only be added by another owner", async () => {
-            expect((await dao.isOwner(owner2)).toString()).to.equal('0');
-            await dao.addNewOwner(owner2);
-            expect((await dao.isOwner(owner2)).toString()).to.equal('1');
+        context('$ inviter is not owner', async () => {
+            it(">> reverts", async () => {
+                await expectRevert(
+                    dao.addNewOwner(owner2),
+                    'DAO: onlyOnwer function'
+                );
+            });
         });
-        it(">> totalOwners should increase by 1", async () => {
-            expect((await dao.totalOwners()).toString()).to.equal('2');
+        context('$ inviter is owner', async () => {
+            it(">> Owner can only be added by another owner", async () => {
+                expect((await dao.isOwner(owner2)).toString()).to.equal('0');
+                await dao.addNewOwner(owner2);
+                expect((await dao.isOwner(owner2)).toString()).to.equal('1');
+            });
+            it(">> totalOwners should increase by 1", async () => {
+                expect((await dao.totalOwners()).toString()).to.equal('2');
+            });
         });
     });
     context('# Add new proposal', async () => {
