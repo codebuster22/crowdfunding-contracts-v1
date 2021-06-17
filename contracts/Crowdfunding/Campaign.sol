@@ -1,20 +1,25 @@
 pragma solidity ^0.8.0;
 
+import 'openzeppelin-solidity/contracts/token/ERC20/IERC20.sol';
+
 contract Campaign{
 
     // fixed by manager - constants
     address public manager;
     uint256 public maximumTarget;
     uint256 public minimumTarget;
+    uint256 public price;
     uint24  public duration;
     string  public name;
     bytes   public hash;
+    address public token;
 
     // Logic state variables
     uint8   public isActive;
     uint8   public isClosed;
     uint8   public isMinimumReached;
     uint8   public isMaximumReached;
+    uint8   public isFunded;
     uint256 public startTime;
     uint256 public totalCollected;
     uint256 public totalWithdrawn;
@@ -28,6 +33,7 @@ contract Campaign{
     event MaximumReached( uint256 totalContribution ,uint256 timestamp);
     event CampaignClosed( uint256 timestamp );
     event ContributionWithdrawen( address manager, uint256 amount );
+    event TokenUpdated( address newToken );
 
     modifier onlyManager() {
         require(manager == msg.sender, "Campaign: onlyManager function");
@@ -35,7 +41,10 @@ contract Campaign{
     }
 
     modifier initializer() {
-        require(manager == address(0), "Campaign: contract already initialized");
+        require(
+            token == address(0) || manager == address(0),
+            "Campaign: contract already initialized"
+        );
         _;
     }
 
@@ -55,9 +64,22 @@ contract Campaign{
         hash = _hash;
     }
 
+    function setToken(address _token, uint256 _price) public initializer {
+        require( _token != address(0), "Campaign: token cannot be null" );
+        token = _token;
+        price = _price;
+        emit TokenUpdated( _token );
+    }
+
     function contribute() public payable {
+        if(
+            isFunded == 0 &&
+            IERC20(token).balanceOf(address(this)) >=  maximumTarget/price
+            ){
+            isFunded = 1;
+        }
         require(
-            isActive == 1,
+            isActive == 1 && isFunded == 1,
             "Campaign: not yet started"
         );
         require( 
@@ -88,6 +110,14 @@ contract Campaign{
         totalCollected -= contribution;
         payable(msg.sender).transfer(contribution);
         emit RetrievedContribution(msg.sender, contribution);
+    }
+
+    function claimTokens() public {
+        require(
+            isMinimumReached == 1 || block.timestamp > startTime + duration,
+            "Campaign: The campaign have not been finalised"
+            );
+        IERC20(token).transfer( msg.sender, contributors[msg.sender]/price ); 
     }
 
     function startCampaign() public onlyManager {

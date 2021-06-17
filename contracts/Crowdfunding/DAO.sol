@@ -1,7 +1,7 @@
 pragma solidity ^0.8.0;
 
-import './CloneFactory.sol';
-import './ICampaign.sol';
+import '../utils/CloneFactory.sol';
+import '../interface/ICampaign.sol';
 
 contract DAO is CloneFactory {
 
