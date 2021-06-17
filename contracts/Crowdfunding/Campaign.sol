@@ -3,10 +3,10 @@ pragma solidity ^0.8.0;
 contract Campaign{
 
     // fixed by manager - constants
-    address public immutable manager;
-    uint256 public immutable maximumTarget;
-    uint256 public immutable minimumTarget;
-    uint24  public immutable duration;
+    address public manager;
+    uint256 public maximumTarget;
+    uint256 public minimumTarget;
+    uint24  public duration;
     string  public name;
     bytes   public hash;
 
@@ -34,14 +34,19 @@ contract Campaign{
         _;
     }
 
-    constructor (
+    modifier initializer() {
+        require(manager == address(0), "Campaign: contract already initialized");
+        _;
+    }
+
+    function initialize(
         string memory _name,
         address _manager,
         uint24 _duration,
         uint256 _maximumTarget,
         uint256 _minimumTarget,
         bytes memory _hash
-    ) {
+    ) public initializer {
         name = _name;
         manager = _manager;
         maximumTarget = _maximumTarget;

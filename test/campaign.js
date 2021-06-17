@@ -19,7 +19,8 @@ contract('Campaign', (accounts) => {
     let hash = '0x00';
     context('# Deploy new Capmaign', async () => {
         it('>> should deploy new campaign contract', async () => {
-            campaign = await Campaign.new(
+            campaign = await Campaign.new();
+            campaign.initialize(
                 name,
                 manager,
                 duration,

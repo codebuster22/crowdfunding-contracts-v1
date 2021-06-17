@@ -1,6 +1,7 @@
 {
   "dependencies": {
-    "chai": "^4.3.4"
+    "chai": "^4.3.4",
+    "openzeppelin-solidity": "^4.1.0"
   },
   "devDependencies": {
     "@openzeppelin/test-helpers": "^0.5.11",

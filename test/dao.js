@@ -16,6 +16,7 @@ contract('DAO', async (accounts) => {
     let options;
     let trx;
     let event;
+    let campaignMasterCopy;
     let zeroBn = new BN(0);
     context('# Deploy new DAO', async () => {
         before("!! Deploy dao for testing", async () => {
@@ -77,8 +78,8 @@ contract('DAO', async (accounts) => {
             });
         });
     });
-    context('# Add new proposal', async () => {
-        before("!! Create argument options for new proposal", async () => {
+    context('# mastercopy is zero address', async () => {
+        before('!! set campaign options', () => {
             options = [
                 "Fundraiser for Blockchain batch-2",
                 '0x',
@@ -87,6 +88,33 @@ contract('DAO', async (accounts) => {
                 30
             ];
         });
+        it('>> should revert when adding new proposal', async () => {
+            await expectRevert(
+                dao.addProposal(...options, {from: manager}),
+                "DAO: mastercopy not initialized"
+            );
+        });
+        it('>> cannot vote when proposal not created', async () => {
+            await expectRevert(
+                dao.vote(1, {from: deployer}),
+                "DAO: proposal does not exists"
+            );
+        });
+    });
+    context('# set mastercopy', async () => {
+        it('>> reverts when mastercopy address is zero', async () => {
+            await expectRevert(
+                dao.setMasterCopy(constants.ZERO_ADDRESS, {from: deployer}),
+                "DAO: Mastercopy cannot be zero address"
+            );
+        });
+        it('>> setMasterCopy when mastrcopy address is valid', async () => {
+            campaignMasterCopy = (await Campaign.new()).address;
+            await dao.setMasterCopy(campaignMasterCopy);
+            expect(await dao.mastercopy()).to.equal(campaignMasterCopy);
+        });
+    })
+    context('# Add new proposal', async () => {
         it(">> should add new proposal", async () => {
             trx = await dao.addProposal(...options, {from: manager});
             const proposal = await dao.proposals(0);
@@ -156,6 +184,14 @@ contract('DAO', async (accounts) => {
             it('>> should deploy campaign with correct values', async () => {
                 const campaign = await Campaign.at(event.args.campaign);
                 expect(await campaign.manager()).to.equal(manager);
+            });
+            it('>> should be a clone of mastercopy', async () => {
+                expect(
+                    await dao.checkIsClone(
+                        campaignMasterCopy, 
+                        event.args.campaign, 
+                        {from: deployer}
+                        )).to.equal(true);
             });
             it('>> cannot vote on already deployed proposal', async () => {
                 await expectRevert(
