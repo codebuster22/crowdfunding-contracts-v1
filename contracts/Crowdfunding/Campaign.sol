@@ -9,7 +9,7 @@ contract Campaign{
     uint256 public maximumTarget;
     uint256 public minimumTarget;
     uint256 public price;
-    uint24  public duration;
+    uint40  public duration;
     string  public name;
     bytes   public hash;
     address public token;
@@ -25,6 +25,7 @@ contract Campaign{
     uint256 public totalWithdrawn;
 
     mapping( address => uint256 ) public contributors;
+    mapping( address => uint8 )   public haveClaimed;
 
     event CampaingStarted(uint256 startTime);
     event NewContribution(address contributor, uint256 contribution);
@@ -34,6 +35,7 @@ contract Campaign{
     event CampaignClosed( uint256 timestamp );
     event ContributionWithdrawen( address manager, uint256 amount );
     event TokenUpdated( address newToken );
+    event TokensClaimed( address claimedBy, uint256 claimAmount );
 
     modifier onlyManager() {
         require(manager == msg.sender, "Campaign: onlyManager function");
@@ -60,7 +62,7 @@ contract Campaign{
         manager = _manager;
         maximumTarget = _maximumTarget;
         minimumTarget = _minimumTarget;
-        duration = _duration;
+        duration = _duration * (1 days);
         hash = _hash;
     }
 
@@ -100,7 +102,6 @@ contract Campaign{
         if(totalCollected == maximumTarget){
             isMaximumReached = 1;
             emit MaximumReached(totalCollected, block.timestamp);
-            // end campaign and transfer funds to manager
         }
     }
 
@@ -121,12 +122,14 @@ contract Campaign{
             isMinimumReached == 1 || block.timestamp > startTime + duration,
             "Campaign: The campaign have not been finalised"
             );
-        IERC20(token).transfer( msg.sender, contributors[msg.sender]/price ); 
+        haveClaimed[msg.sender] = 1;
+        IERC20(token).transfer( msg.sender, contributors[msg.sender]*price ); 
+        emit TokensClaimed(msg.sender, contributors[msg.sender]*price );
     }
 
     function startCampaign() public onlyManager {
         require(isActive == 0, "Campaign: alrerady active");
-        require(token != address(0), "Campaign: alrerady active");
+        require(token != address(0), "Campaign: distribution token not set");
         isActive = 1;
         startTime = block.timestamp;
         emit CampaingStarted(block.timestamp);
@@ -134,7 +137,7 @@ contract Campaign{
 
     function closeCampaign() public onlyManager {
         require(
-            isMinimumReached == 0 || block.timestamp < startTime + duration,
+            isMinimumReached == 0 && block.timestamp < startTime + duration,
             "Campaign: The campaign have been finalised"
         );
         isClosed = 1;
@@ -143,12 +146,12 @@ contract Campaign{
 
     function withdraw(uint256 _amount) public onlyManager {
         require(
-            isMinimumReached == 1 || block.timestamp >= startTime + duration,
+            isMinimumReached == 1 && block.timestamp >= startTime + duration,
             "Campaign: The campaign have not been finalised"
         );
         require(
             totalCollected >= totalWithdrawn+_amount,
-            "Capmaign: Cannot withdraw more than collected"
+            "Campaign: Cannot withdraw more than collected"
         );
         totalWithdrawn += _amount;
         payable(manager).transfer(_amount);
