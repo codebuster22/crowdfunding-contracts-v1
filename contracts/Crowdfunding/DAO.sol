@@ -108,7 +108,7 @@ contract DAO is CloneFactory {
                 proposals[_proposalId].minimumTarget,
                 proposals[_proposalId].hash
             );
-            emit CampaignDeployed(address(campaign), _proposalId, proposals[_proposalId].manager);
+            emit CampaignDeployed(campaign, _proposalId, proposals[_proposalId].manager);
         }
     }
 

@@ -72,6 +72,10 @@ contract Campaign{
     }
 
     function contribute() public payable {
+        require(
+            isActive == 1,
+            "Campaign: not yet started"
+        );
         if(
             isFunded == 0 &&
             IERC20(token).balanceOf(address(this)) >=  maximumTarget/price
@@ -79,8 +83,8 @@ contract Campaign{
             isFunded = 1;
         }
         require(
-            isActive == 1 && isFunded == 1,
-            "Campaign: not yet started"
+            isFunded == 1,
+            "Campaign: not yet funded"
         );
         require( 
             totalCollected + msg.value <= maximumTarget, 
@@ -122,6 +126,7 @@ contract Campaign{
 
     function startCampaign() public onlyManager {
         require(isActive == 0, "Campaign: alrerady active");
+        require(token != address(0), "Campaign: alrerady active");
         isActive = 1;
         startTime = block.timestamp;
         emit CampaingStarted(block.timestamp);
