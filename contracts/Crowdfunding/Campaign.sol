@@ -1,6 +1,7 @@
 pragma solidity ^0.8.0;
 
 import 'openzeppelin-solidity/contracts/token/ERC20/IERC20.sol';
+import '../NobelCertificate.sol';
 
 contract Campaign{
 
@@ -23,6 +24,7 @@ contract Campaign{
     uint256 public startTime;
     uint256 public totalCollected;
     uint256 public totalWithdrawn;
+    NobelCertificate public nbc;
 
     mapping( address => uint256 ) public contributors;
     mapping( address => uint8 )   public haveClaimed;
@@ -36,6 +38,7 @@ contract Campaign{
     event ContributionWithdrawen( address manager, uint256 amount );
     event TokenUpdated( address newToken );
     event TokensClaimed( address claimedBy, uint256 claimAmount );
+    event CertificateDeployed( address certificate);
 
     modifier onlyManager() {
         require(manager == msg.sender, "Campaign: onlyManager function");
@@ -64,6 +67,8 @@ contract Campaign{
         minimumTarget = _minimumTarget;
         duration = _duration * (1 days);
         hash = _hash;
+        nbc = new NobelCertificate("Nobel Certificate","NBC");
+        emit CertificateDeployed(address(nbc));
     }
 
     function setToken(address _token, uint256 _price) public initializer {
@@ -123,7 +128,8 @@ contract Campaign{
             "Campaign: The campaign have not been finalised"
             );
         haveClaimed[msg.sender] = 1;
-        IERC20(token).transfer( msg.sender, contributors[msg.sender]*price ); 
+        IERC20(token).transfer( msg.sender, contributors[msg.sender]*price );
+        nbc.generateCertificate(msg.sender, contributors[msg.sender]); 
         emit TokensClaimed(msg.sender, contributors[msg.sender]*price );
     }
 

@@ -1,5 +1,6 @@
 const {
     Campaign,
+    Certificate,
     Token,
     expect,
     BN,
@@ -14,9 +15,12 @@ const {
 contract('Campaign', (accounts) => {
     let [deployer, manager, user1, user2] = accounts;
     let campaign;
+    let certificate;
     let test;
+    let testCertificate;
     let token;
     let trx;
+    let event;
     let price = 5;
     let name = "Fundraiser for Blockchain batch-2";
     let duration = 30;
@@ -29,7 +33,7 @@ contract('Campaign', (accounts) => {
             token = await Token.new('Nobel Token', 'NBT', toWei('1000000'));
         })
         it('>> should initialize new campaign contract', async () => {
-            await campaign.initialize(
+            trx = await campaign.initialize(
                 name,
                 manager,
                 duration,
@@ -44,6 +48,15 @@ contract('Campaign', (accounts) => {
             expect((await campaign.maximumTarget()).toString()).to.equal(maximumTarget);
             expect((await campaign.minimumTarget()).toString()).to.equal(minimumTarget);
             expect(await campaign.hash()).to.equal(hash);
+        });
+        it('>> deploy new NobelCertificate Contract', async () => {
+            event = await expectEvent(
+                trx.receipt,
+                'CertificateDeployed'
+            );
+            certificate = await Certificate.at(event.args.certificate);
+            expect(await certificate.name()).to.equal("Nobel Certificate");
+            expect(await certificate.controller()).to.equal(campaign.address);
         });
         it('>> cannot start campaign is token not set', async () => {
             await expectRevert(
@@ -181,6 +194,7 @@ contract('Campaign', (accounts) => {
                 hash,
                 {from: deployer}
             );
+            testCertificate = await Certificate.at(await test.nbc());
             await test.setToken(token.address, price);
             await test.startCampaign({from: manager});
             const requiredTokens = new BN(maximumTarget).mul(new BN(price));
@@ -214,6 +228,12 @@ contract('Campaign', (accounts) => {
                     'RetrievedContribution'
                 );
             });
+            it('>> cannot generate certificate from nor controller', async () => {
+                await expectRevert(
+                    testCertificate.generateCertificate(user2, toWei('10'),{from: user1}),
+                    'NobelCertificate: onlyController function'
+                );
+            });
         });
         context('$ Campaign is finalized', async ()=> {
             before('!! finalize the campaign', async () => {
@@ -232,6 +252,15 @@ contract('Campaign', (accounts) => {
                 expect((await token.balanceOf(user1)).toString()).to.equal(
                     toWei((11*price).toString())
                 );
+                event = await expectEvent.inTransaction(
+                    trx.tx,
+                    testCertificate,
+                    'Transfer',
+                    {
+                        to: user1
+                    }
+                );
+                expect(await testCertificate.ownerOf(event.args.tokenId)).to.equal(user1);
             });
             it('>> should emit event TokensClaimed', async () => {
                 await expectEvent(
