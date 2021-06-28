@@ -127,6 +127,10 @@ contract Campaign{
             isMinimumReached == 1 || block.timestamp > startTime + duration,
             "Campaign: The campaign have not been finalised"
             );
+        require(
+        	haveClaimed[msg.sender] == 0,
+        	"Campaign: already claimed tokens"
+        	);
         haveClaimed[msg.sender] = 1;
         IERC20(token).transfer( msg.sender, contributors[msg.sender]*price );
         nbc.generateCertificate(msg.sender, contributors[msg.sender]); 
